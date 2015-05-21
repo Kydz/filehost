@@ -9,6 +9,7 @@ exit;
 class Upload{
     private $_root = 'img';
     private $_url = '';
+    private $_tmp = 'temp';
 
     private $_errorMsg = '';
 
@@ -63,17 +64,23 @@ class Upload{
     }
 
     private function validateFile(){
+        $name = md5_file($this->_file['tmp_name']);
+        $this->_ext = array_pop(explode(',', $this->_file['name']));
+        //check allowed extensions
+        //--todo
+        //save file in temp dir
+        $tempPath = $this->_tmp.'/'.time().$this->_ext;
+        if(!move_uploaded_file($this->_file['tmp_name'], $path)){
+            throw new Exception("fail to move file to temp dir", 1);
+        }
+        
+        //check exsistence
 
     }
 
     private function saveFile(){
-        $name = md5_file($this->_file['tmp_name']);
-        $ext = array_pop(explode(',', $this->_file['name']));
         $tmpPath = $this->_root.'/'.$name.'.'.$ext;
         if(!file_exists($path)){
-            if(!move_uploaded_file($this->_file['tmp_name'], $path)){
-                throw new Exception("fail to save file", 1);                
-            }
         }
         $this->_url = 'http://'.$_SERVER['HTTP_HOST'].'/'.$path;
     }
