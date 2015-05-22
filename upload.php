@@ -1,8 +1,10 @@
 <?php
+require_once 'JSON.php';
 $uploader = new Upload();
 $re = $uploader->upload();
 header('Content-type: text/html; charset=UTF-8');
-echo json_encode($re);
+$json = new Services_JSON();
+echo $json->encode($re);
 exit;
 
 
@@ -14,13 +16,16 @@ class Upload{
     private $_errorMsg = '';
 
     private $_file = null;
+    private $_fileContent = '';
+    private $_fileName = '';
+    private $_erxt = '';
 
     public function upload(){
         try {
             $this->setFile();
             $this->validateFile();
             $this->saveFile();
-            $data = ['error' => 0, 'url' => $this->_url, 'message' => 'success'];
+            $data = ['error' => 0, 'url' => $this->_url];
         } catch (Exception $e) {
             $data = ['error' => $e->getCode(), 'message' => $e->getMessage()];
         }
@@ -32,7 +37,7 @@ class Upload{
             throw new Exception("no file found", 1);            
         }
         if(!empty($_FILES['imgFile']['error'])){
-            switch ($_FILES['imgFile']['error']) {
+            switch ($_FILES['imgFile']['error']) { 
                 case '1':
                 case '2':
                     $this->_errorMsg = 'size too large';
@@ -64,24 +69,27 @@ class Upload{
     }
 
     private function validateFile(){
-        $name = md5_file($this->_file['tmp_name']);
         $this->_ext = array_pop(explode(',', $this->_file['name']));
         //check allowed extensions
         //--todo
         //save file in temp dir
-        $tempPath = $this->_tmp.'/'.time().$this->_ext;
-        if(!move_uploaded_file($this->_file['tmp_name'], $path)){
-            throw new Exception("fail to move file to temp dir", 1);
-        }
-        
+        $tempPath = $this->_tmp.'/'.time().'.'.$this->_ext;
+        move_uploaded_file($this->_file['tmp_name'], $tempPath);
         //check exsistence
-
+        $this->_fileName = $name = md5_file($tempPath);
+        $files = scandir($this->_root);
+        if(!in_array($name.'.'.$this->_ext, $files)){
+            $this->_fileContent = file_get_contents($tempPath);
+        }else{
+            $this->_url = 'http://'.$_SERVER['HTTP_HOST'].'/'.$this->_root.'/'.$name.'.'.$this->_ext;
+        }
     }
 
     private function saveFile(){
-        $tmpPath = $this->_root.'/'.$name.'.'.$ext;
-        if(!file_exists($path)){
-        }
+        if($this->_url) return;
+        if(!$this->_fileContent) throw new Exception("no file content found", 1);
+        $path = $this->_root.'/'.$this->_fileName.'.'.$this->_ext;
+        if(!file_put_contents($path, $this->_fileContent)) throw new Exception("fail to save file", 1);
         $this->_url = 'http://'.$_SERVER['HTTP_HOST'].'/'.$path;
     }
 }
