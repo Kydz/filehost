@@ -1,10 +1,9 @@
 <?php
 require_once 'JSON.php';
 $uploader = new Upload();
-$re = $uploader->upload();
+$re = $uploader->uploadProxy();
 header('Content-type: text/html; charset=UTF-8');
-$json = new Services_JSON();
-echo $json->encode($re);
+echo json_encode($re);
 exit;
 
 
@@ -20,7 +19,7 @@ class Upload{
     private $_fileName = '';
     private $_erxt = '';
 
-    public function upload(){
+    public function uploadProxy(){
         try {
             $this->setFile();
             $this->validateFile();
@@ -34,7 +33,7 @@ class Upload{
 
     private function setFile(){
         if(empty($_FILES['imgFile'])){
-            throw new Exception("no file found", 1);            
+            throw new Exception("no file found", 1);
         }
         if(!empty($_FILES['imgFile']['error'])){
             switch ($_FILES['imgFile']['error']) { 
@@ -65,24 +64,26 @@ class Upload{
             throw new Exception($this->_errorMsg, 1);
         }
         $this->_file = $_FILES['imgFile'];
+        $this->_file['name'] = $_POST['imgName'];
         return $this;
     }
 
     private function validateFile(){
-        $this->_ext = array_pop(explode(',', $this->_file['name']));
+        $this->_ext = array_pop(explode('.', $this->_file['name']));
         //check allowed extensions
         //--todo
         //save file in temp dir
         $tempPath = $this->_tmp.'/'.time().'.'.$this->_ext;
         move_uploaded_file($this->_file['tmp_name'], $tempPath);
         //check exsistence
-        $this->_fileName = $name = md5_file($tempPath);
+        $this->_fileName = md5_file($tempPath);
         $files = scandir($this->_root);
-        if(!in_array($name.'.'.$this->_ext, $files)){
+        if(!in_array($this->_fileName.'.'.$this->_ext, $files)){
             $this->_fileContent = file_get_contents($tempPath);
         }else{
             $this->_url = 'http://'.$_SERVER['HTTP_HOST'].'/'.$this->_root.'/'.$name.'.'.$this->_ext;
         }
+        unlink($tempPath);
     }
 
     private function saveFile(){
