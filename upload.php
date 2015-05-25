@@ -1,9 +1,12 @@
 <?php
-require_once 'JSON.php';
-$uploader = new Upload();
-$re = $uploader->uploadProxy();
 header('Content-type: text/html; charset=UTF-8');
-echo json_encode($re);
+$uploader = new Upload();
+if($_POST['fileContent']){
+    $re = $uploader->uploadProxyBinary();
+}else{
+    $re = $uploader->uploadProxy();    
+}
+echo json_encode($re)."<script></script>";
 exit;
 
 
@@ -22,10 +25,27 @@ class Upload{
     public function uploadProxy(){
         try {
             $this->setFile();
-            $this->validateFile();
+            $this->templizeFile();
+            $this->checkExistence();
             $this->saveFile();
             $data = ['error' => 0, 'url' => $this->_url];
         } catch (Exception $e) {
+            $data = ['error' => $e->getCode(), 'message' => $e->getMessage()];
+        }
+        return $data;
+    }
+
+    public function uploadProxyBinary(){
+        if(!$_POST['fileContent']){
+            throw new Exception("no file found", 1);
+        }
+        $this->_fileContent = $_POST['fileContent'];
+        $this->_ext = array_pop(explode('.', $_POST['fileName']));
+        try{
+            $this->checkExistence();
+            $this->saveFile();
+            $data = ['error' => 0, 'url' => $this->_url];
+        } catch (Exception $e){
             $data = ['error' => $e->getCode(), 'message' => $e->getMessage()];
         }
         return $data;
@@ -68,22 +88,25 @@ class Upload{
         return $this;
     }
 
-    private function validateFile(){
+    private function templizeFile(){
         $this->_ext = array_pop(explode('.', $this->_file['name']));
         //check allowed extensions
         //--todo
         //save file in temp dir
         $tempPath = $this->_tmp.'/'.time().'.'.$this->_ext;
         move_uploaded_file($this->_file['tmp_name'], $tempPath);
-        //check exsistence
-        $this->_fileName = md5_file($tempPath);
+        $this->_fileContent = file_get_contents($tempPath);
+        unlink($tempPath);
+    }
+
+    private function checkExistence(){
+        $this->_fileName = md5($this->_fileContent);
         $files = scandir($this->_root);
         if(!in_array($this->_fileName.'.'.$this->_ext, $files)){
-            $this->_fileContent = file_get_contents($tempPath);
+            $this->_url = '';
         }else{
             $this->_url = 'http://'.$_SERVER['HTTP_HOST'].'/'.$this->_root.'/'.$name.'.'.$this->_ext;
         }
-        unlink($tempPath);
     }
 
     private function saveFile(){
