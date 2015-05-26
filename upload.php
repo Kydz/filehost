@@ -1,12 +1,12 @@
 <?php
-header('Content-type: text/html; charset=UTF-8');
+// header('Content-type: text/html; charset=UTF-8');
 $uploader = new Upload();
 if($_POST['fileContent']){
     $re = $uploader->uploadProxyBinary();
 }else{
     $re = $uploader->uploadProxy();    
 }
-echo json_encode($re)."<script></script>";
+echo json_encode($re);
 exit;
 
 
@@ -39,8 +39,10 @@ class Upload{
         if(!$_POST['fileContent']){
             throw new Exception("no file found", 1);
         }
+        $name = $_POST['fileName'];
         $this->_fileContent = $_POST['fileContent'];
-        $this->_ext = array_pop(explode('.', $_POST['fileName']));
+        $ext = explode('.', $name);
+        $this->_ext = array_pop($ext);
         try{
             $this->checkExistence();
             $this->saveFile();
@@ -105,15 +107,15 @@ class Upload{
         if(!in_array($this->_fileName.'.'.$this->_ext, $files)){
             $this->_url = '';
         }else{
-            $this->_url = 'http://'.$_SERVER['HTTP_HOST'].'/'.$this->_root.'/'.$name.'.'.$this->_ext;
+            $this->_url = 'http://'.$_SERVER['HTTP_HOST'].'/getImg.php?file='.$this->_fileName.'.'.$this->_ext;
         }
     }
 
     private function saveFile(){
         if($this->_url) return;
         if(!$this->_fileContent) throw new Exception("no file content found", 1);
-        $path = $this->_root.'/'.$this->_fileName.'.'.$this->_ext;
+        $path = 'saekv://'.$this->_fileName.'.'.$this->_ext;
         if(!file_put_contents($path, $this->_fileContent)) throw new Exception("fail to save file", 1);
-        $this->_url = 'http://'.$_SERVER['HTTP_HOST'].'/'.$path;
+        $this->_url = 'http://'.$_SERVER['HTTP_HOST'].'/getImg.php?file='.$this->_fileName.'.'.$this->_ext;
     }
 }
